@@ -7873,6 +7873,20 @@ void RenderingDevice::swap_buffers(bool p_present) {
 
 	GodotProfileZoneGrouped(_profile_zone, "_begin_frame");
 	_begin_frame(true);
+
+	// TEMP leak probe for https://github.com/godotengine/godot/issues/120534 — remove before merge.
+	// Dumps live RenderingDevice object counts every ~120 frames so we can see which pool grows
+	// before the AMD VK_ERROR_TOO_MANY_OBJECTS crash.
+	{
+		static uint32_t _leak_probe_tick = 0;
+		if ((_leak_probe_tick++ % 120) == 0) {
+			print_line(vformat("[RD-PROBE] tex=%d vbuf=%d ibuf=%d ubuf=%d sbuf=%d texbuf=%d uset=%d fb=%d samp=%d driver_allocs=%d",
+					texture_owner.get_rid_count(), vertex_buffer_owner.get_rid_count(), index_buffer_owner.get_rid_count(),
+					uniform_buffer_owner.get_rid_count(), storage_buffer_owner.get_rid_count(), texture_buffer_owner.get_rid_count(),
+					uniform_set_owner.get_rid_count(), framebuffer_owner.get_rid_count(), sampler_owner.get_rid_count(),
+					(int)get_driver_allocation_count()));
+		}
+	}
 }
 
 void RenderingDevice::submit() {
